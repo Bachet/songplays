@@ -1,9 +1,11 @@
 import glob
 import os
 from datetime import datetime
+from typing import Callable
 
 import pandas as pd
-import psycopg2
+from psycopg2 import connect
+from psycopg2.extensions import connection, cursor
 
 from sql_queries import (artist_table_insert, song_select, song_table_insert,
                          songplay_table_insert, time_table_insert,
@@ -11,6 +13,13 @@ from sql_queries import (artist_table_insert, song_select, song_table_insert,
 
 
 def process_song_file(cur, filepath):
+    """
+    - Processes a song file in the songs dataset
+    - upserts data into tables [songs, artists]
+
+    :param cur: cursor of the database connection
+    :param filepath: file path of the songs file
+    """
     # open song file
     df = pd.read_json(filepath, lines=True)
 
@@ -26,6 +35,13 @@ def process_song_file(cur, filepath):
 
 
 def process_log_file(cur, filepath):
+    """
+    - Processes a log file in the events log dataset
+    - Upserts data into tables [users, time, songplays]
+
+    :param cur: cursor of the database connection
+    :param filepath: file path of the logs file
+    """
     # open log file
     df = pd.read_json(filepath, lines=True)
 
@@ -76,17 +92,26 @@ def process_log_file(cur, filepath):
         cur.execute(songplay_table_insert, songplay_data)
 
 
-def process_data(cur, conn, filepath, func):
+def process_data(cur: cursor, conn: connection, folder_path: str, func: Callable) -> None:
+    """
+    - Recursively iterates over folder structure data
+    - Processes all json format files
+
+    :param cur: cursor of the database connection
+    :param conn: database connection
+    :param folder_path: path of the root folder of a dataset
+    :param func: callable processing function to use for the dataset
+    """
     # get all files matching extension from directory
     all_files = []
-    for root, dirs, files in os.walk(filepath):
+    for root, dirs, files in os.walk(folder_path):
         files = glob.glob(os.path.join(root, "*.json"))
         for f in files:
             all_files.append(os.path.abspath(f))
 
     # get total number of files found
     num_files = len(all_files)
-    print("{} files found in {}".format(num_files, filepath))
+    print("{} files found in {}".format(num_files, folder_path))
 
     # iterate over files and process
     for i, datafile in enumerate(all_files, 1):
@@ -96,11 +121,17 @@ def process_data(cur, conn, filepath, func):
 
 
 def main():
-    conn = psycopg2.connect("host=127.0.0.1 dbname=sparkifydb user=student password=student")
+    """
+    - Establishes connection with the sparkify database and gets cursor to it.
+    - Processes songs dataset
+    - Processes logs dataset
+    - Finally, closes the connection.
+    """
+    conn = connect("host=127.0.0.1 dbname=sparkifydb user=student password=student")
     cur = conn.cursor()
 
-    process_data(cur, conn, filepath="data/song_data", func=process_song_file)
-    process_data(cur, conn, filepath="data/log_data", func=process_log_file)
+    process_data(cur, conn, folder_path="data/song_data", func=process_song_file)
+    process_data(cur, conn, folder_path="data/log_data", func=process_log_file)
 
     conn.close()
 

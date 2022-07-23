@@ -1,4 +1,5 @@
-import psycopg2
+from psycopg2 import connect
+from psycopg2.extensions import connection, cursor
 
 from sql_queries import create_table_queries, drop_table_queries
 
@@ -8,9 +9,8 @@ def create_database():
     - Creates and connects to the sparkifydb
     - Returns the connection and cursor to sparkifydb
     """
-
     # connect to default database
-    conn = psycopg2.connect("host=127.0.0.1 dbname=studentdb user=student password=student")
+    conn = connect("host=127.0.0.1 dbname=studentdb user=student password=student")
     conn.set_session(autocommit=True)
     cur = conn.cursor()
 
@@ -22,24 +22,30 @@ def create_database():
     conn.close()
 
     # connect to sparkify database
-    conn = psycopg2.connect("host=127.0.0.1 dbname=sparkifydb user=student password=student")
+    conn = connect("host=127.0.0.1 dbname=sparkifydb user=student password=student")
     cur = conn.cursor()
 
     return cur, conn
 
 
-def drop_tables(cur, conn):
+def drop_tables(cur: cursor, conn: connection):
     """
     Drops each table using the queries in `drop_table_queries` list.
+
+    :param cur: cursor of the database connection
+    :param conn: database connection
     """
     for query in drop_table_queries:
         cur.execute(query)
         conn.commit()
 
 
-def create_tables(cur, conn):
+def create_tables(cur: cursor, conn: connection):
     """
     Creates each table using the queries in `create_table_queries` list.
+
+    :param cur: cursor of the database connection
+    :param conn: database connection
     """
     for query in create_table_queries:
         cur.execute(query)
@@ -49,14 +55,9 @@ def create_tables(cur, conn):
 def main():
     """
     - Drops (if exists) and Creates the sparkify database.
-
-    - Establishes connection with the sparkify database and gets
-    cursor to it.
-
+    - Establishes connection with the sparkify database and gets cursor to it.
     - Drops all the tables.
-
     - Creates all tables needed.
-
     - Finally, closes the connection.
     """
     cur, conn = create_database()
